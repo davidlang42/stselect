@@ -1,4 +1,4 @@
-use std::fs;
+//use std::fs;
 
 pub struct SubFolder {
     pub name: String,
@@ -6,24 +6,24 @@ pub struct SubFolder {
 }
 
 pub struct IgnoreFile {
-    path: String,
+    _path: String,
     pub folders: Vec<SubFolder>
 }
 
 impl IgnoreFile {
-    pub fn find(path: &str) -> Result<String, String> {
-
+    pub fn find(_path: &str) -> Result<String, String> {
+        todo!()
     }
 
-    pub fn open(filename: &str) -> Result<Self, String> {
-
+    pub fn open(_filename: &str) -> Result<Self, String> {
+        todo!()
     }
 
-    pub fn set(&mut self, sub_folder: &str, value: bool) -> Result<(), String> {
-
+    pub fn set(&mut self, _sub_folder: &str, _value: bool) -> Result<(), String> {
+        todo!()
     }
 
     pub fn save(&self) -> Result<(), String> {
-
+        todo!()
     }
 }

@@ -35,6 +35,8 @@ fn verb(cmd: String, verb: &str, args: Vec<String>) -> Result<(), String> {
         "all" if args.len() == 1 => set_all(&args[0], true),
         "none" if args.len() == 0 => set_all(".", false),
         "none" if args.len() == 1 => set_all(&args[0], false),
+        _ if args.len() == 0 => interactive("."),
+        _ if args.len() == 1 => interactive(&args[0]),
         _ => help(cmd)
     }
 }
@@ -42,7 +44,7 @@ fn verb(cmd: String, verb: &str, args: Vec<String>) -> Result<(), String> {
 fn list(path: &str) -> Result<(), String> {
     let ignore = open(path)?;
     let mut count = 0;
-    for folder in ignore.folders {
+    for folder in &ignore.folders {
         let selected = if folder.selected {
             count += 1;
             'x'
@@ -56,14 +58,14 @@ fn list(path: &str) -> Result<(), String> {
 }
 
 fn set_folder(path: &str, sub_folder: &str, value: bool) -> Result<(), String> {
-    let ignore = open(path)?;
+    let mut ignore = open(path)?;
     ignore.set(sub_folder, value)?;
     println!("{} '{}' for syncing", selected(value), sub_folder);
     ignore.save()
 }
 
 fn set_all(path: &str, value: bool) -> Result<(), String> {
-    let ignore = open(path)?;
+    let mut ignore = open(path)?;
     for folder in ignore.folders.iter_mut() {
         folder.selected = value;
     }
@@ -82,4 +84,8 @@ fn selected(value: bool) -> &'static str {
     } else {
         "Unselected"
     }
+}
+
+fn interactive(_path: &str) -> Result<(), String> {
+    todo!()
 }
