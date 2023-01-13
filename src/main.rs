@@ -1,4 +1,4 @@
-use std::{env, error::Error};
+use std::{env, error::Error, fs};
 use crate::syncthing::{IgnoreFile, SubFolder};
 
 mod syncthing;
@@ -20,8 +20,7 @@ fn help(cmd: String) -> Result<(), Box<dyn Error>> {
     println!("  {} exclude [PATH] [SUB_FOLDER] -- disable syncing of SUB_FOLDER", cmd);
     println!("  {} all [PATH] -- enable syncing of all sub folders", cmd);
     println!("  {} none [PATH] -- disable syncing of all sub folders", cmd);
-    println!("Omit PATH to use current directory");
-    println!("Omit both to use current directory as SUB_FOLDER and .. as PATH");
+    println!("Omit PATH to use current directory, or omit PATH and SUB_FOLDER to use current directory as SUB_FOLDER and its parent as PATH");
     Ok(())
 }
 
@@ -29,16 +28,18 @@ fn verb(cmd: String, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>
     match verb {
         "list" if args.len() == 0 => list("."),
         "list" if args.len() == 1 => list(&args[0]),
-        "include" if args.len() == 0 => set_folder("..", ".", true),
+        "include" if args.len() == 0 => set_folder("..", &current_sub_folder()?, true),
         "include" if args.len() == 1 => set_folder(".", &args[0], true),
         "include" if args.len() == 2 => set_folder(&args[0], &args[1], true),
-        "exclude" if args.len() == 0 => set_folder("..", ".", false),
+        "exclude" if args.len() == 0 => set_folder("..", &current_sub_folder()?, false),
         "exclude" if args.len() == 1 => set_folder(".", &args[0], false),
         "exclude" if args.len() == 2 => set_folder(&args[0], &args[1], false),
         "all" if args.len() == 0 => set_all(".", true),
         "all" if args.len() == 1 => set_all(&args[0], true),
         "none" if args.len() == 0 => set_all(".", false),
         "none" if args.len() == 1 => set_all(&args[0], false),
+        "help" => help(cmd),
+        "-h" => help(cmd),
         _ if args.len() == 0 => interactive("."),
         _ if args.len() == 1 => interactive(&args[0]),
         _ => help(cmd)
@@ -53,7 +54,7 @@ fn list(path: &str) -> Result<(), Box<dyn Error>> {
     }
     println!("{} of {} sub folders selected to sync", ignore.folders.iter().filter(|f| f.selected).count(), ignore.folders.len());
     if ignore.removed.len() > 0 {
-        print!("(and {} of {} sub folders which have since been deleted)", ignore.removed.iter().filter(|f| f.selected).count(), ignore.removed.len());
+        println!("(and {} of {} sub folders which have since been deleted)", ignore.removed.iter().filter(|f| f.selected).count(), ignore.removed.len());
     }
     Ok(())
 }
@@ -124,4 +125,9 @@ fn list_removed(ignore: &IgnoreFile) {
             print_folder(folder);
         }
     }
+}
+
+fn current_sub_folder() -> Result<String, Box<dyn Error>> {
+    let wd = fs::canonicalize(".")?;
+    Ok(wd.file_name().unwrap().to_str().unwrap().to_string())
 }
