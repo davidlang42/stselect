@@ -7,12 +7,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut args = env::args();
     let cmd = args.next().unwrap();
     match args.next() {
-        Some(s) => verb(cmd, &s, args.collect()),
+        Some(s) => verb(&cmd, &s, args.collect()),
         None => interactive(".")
     }
 }
 
-fn help(cmd: String) -> Result<(), Box<dyn Error>> {
+fn help(cmd: &str) -> Result<(), Box<dyn Error>> {
     println!("Usage:");
     println!("  {} [PATH] -- open an interactive editor for which folders to sync", cmd);
     println!("  {} list [PATH] -- list the folders currently selected to sync", cmd);
@@ -24,7 +24,7 @@ fn help(cmd: String) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn verb(cmd: String, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> {
+fn verb(cmd: &str, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> {
     match verb {
         "list" if args.len() == 0 => list("."),
         "list" if args.len() == 1 => list(&args[0]),
@@ -87,10 +87,6 @@ fn selected(value: bool) -> &'static str {
     }
 }
 
-fn interactive(_path: &str) -> Result<(), Box<dyn Error>> {
-    todo!()
-}
-
 fn warn(ignore: &IgnoreFile) {
     let mut warnings = Vec::new();
     if !ignore.previously_generated {
@@ -130,4 +126,9 @@ fn list_removed(ignore: &IgnoreFile) {
 fn current_sub_folder() -> Result<String, Box<dyn Error>> {
     let wd = fs::canonicalize(".")?;
     Ok(wd.file_name().unwrap().to_str().unwrap().to_string())
+}
+
+fn interactive(_path: &str) -> Result<(), Box<dyn Error>> {
+    println!("TODO: Interactive mode not implemented yet.");
+    help("stselect")
 }
