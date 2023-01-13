@@ -65,7 +65,8 @@ fn set_folder(path: &str, sub_folder: &str, value: bool) -> Result<(), Box<dyn E
     ignore.set(sub_folder, value)?;
     println!("{} '{}' for syncing", selected(value), sub_folder);
     list_removed(&ignore);
-    ignore.save()
+    ignore.save()?;
+    clean(&ignore)
 }
 
 fn set_all(path: &str, value: bool) -> Result<(), Box<dyn Error>> {
@@ -76,7 +77,18 @@ fn set_all(path: &str, value: bool) -> Result<(), Box<dyn Error>> {
     }
     println!("{} all {} sub folders for syncing", selected(value), ignore.folders.len());
     list_removed(&ignore);
-    ignore.save()
+    ignore.save()?;
+    clean(&ignore)
+}
+
+fn clean(ignore: &IgnoreFile) -> Result<(), Box<dyn Error>> {
+    if let Some(files) = ignore.clean_redundant_files()? {
+        println!("Moved non-synced files to {}", files.to_path.display());
+        for (folder, count) in files.count_by_folder {
+            println!("- {}: {} files", folder.name, count);
+        }
+    }
+    Ok(())
 }
 
 fn selected(value: bool) -> &'static str {

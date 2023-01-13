@@ -28,6 +28,11 @@ pub enum SyncthingError {
     FilenameRequired
 }
 
+pub struct FilesMoved<'a> {
+    pub count_by_folder: Vec<(&'a SubFolder, usize)>,
+    pub to_path: PathBuf
+}
+
 const STFOLDER: &str = ".stfolder";
 const STIGNORE: &str = ".stignore";
 const STVERSIONS: &str = ".stversions";
@@ -213,6 +218,30 @@ impl IgnoreFile {
         } else {
             Err(Box::new(SyncthingError::FilenameRequired))
         }
+    }
+
+    pub fn clean_redundant_files(&self) -> Result<Option<FilesMoved>, Box<dyn Error>> {
+        let stversions = self.filename.with_file_name(STVERSIONS);
+        let counts = Vec::new();
+        for folder in self.folders.iter().filter(|f| !f.selected) {
+            let path = self.filename.with_file_name(folder.name);
+            let entries = ls(path, true, true);
+            if entries.len() > 0 {
+                let move_to = stversions.clone();
+                move_to.push(folder.name);
+                for entry in entries {
+                    //TODO fs rename from to, but make sure to does not exist, if it does then rename to to .0/.1 etc until doesn't exist
+                }
+            }
+        }
+        Ok(if counts.len() > 0 {
+            Some(FilesMoved {
+                count_by_folder: counts,
+                to_path: stversions
+            })
+        } else {
+            None
+        })
     }
 }
 
