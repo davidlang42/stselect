@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::error::Error;
 use std::path::PathBuf;
+use std::path;
 use std::fmt;
 use std::str::FromStr;
 use std::io::Write;
@@ -65,13 +66,13 @@ impl FromStr for SubFolder {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() >= 3 && &s[0..2] == "!/" {
+        if s.len() >= 3 && &s[0..2] == "!/" && !s[2..].contains(path::MAIN_SEPARATOR) {
             Ok(Self {
                 name: s[2..].to_string(),
                 selected: true,
                 assumed: false
             })
-        } else if s.len() >= 4 && &s[0..3] == "#!/" {
+        } else if s.len() >= 4 && &s[0..3] == "#!/" && !s[3..].contains(path::MAIN_SEPARATOR) {
             Ok(Self {
                 name: s[3..].to_string(),
                 selected: false,
