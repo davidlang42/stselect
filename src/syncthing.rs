@@ -172,7 +172,7 @@ impl IgnoreFile {
             if ignore.folders.iter().position(|f| f.name == name).is_none() {
                 let f = SubFolder {
                     name,
-                    selected: true,
+                    selected: false,
                     assumed: true
                 };
                 ignore.folders.push(f);
