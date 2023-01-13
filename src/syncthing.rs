@@ -178,6 +178,9 @@ impl IgnoreFile {
                 ignore.folders.push(f);
             }
         }
+        // sort and return
+        ignore.folders.sort_by(|a,b| a.name.cmp(&b.name));
+        ignore.removed.sort_by(|a,b| a.name.cmp(&b.name));
         Ok(ignore)
     }
 
