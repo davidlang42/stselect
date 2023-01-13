@@ -85,7 +85,7 @@ impl FromStr for SubFolder {
 
 impl fmt::Display for IgnoreFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "{} at {:?}", FIRST_LINE_PREFIX, chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S"))?;
+        writeln!(f, "{} at {}", FIRST_LINE_PREFIX, chrono::offset::Local::now().format("%Y-%m-%d %H:%M:%S"))?;
         for line in &self.passthrough {
             writeln!(f, "{}", line)?;
         }
