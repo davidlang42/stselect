@@ -8,7 +8,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let cmd = args.next().unwrap();
     match args.next() {
         Some(s) => verb(cmd, &s, args.collect()),
-        None => help(cmd)
+        None => interactive(".")
     }
 }
 
@@ -40,8 +40,8 @@ fn verb(cmd: String, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>
         "none" if args.len() == 1 => set_all(&args[0], false),
         "help" => help(cmd),
         "-h" => help(cmd),
-        _ if args.len() == 0 => interactive("."),
-        _ if args.len() == 1 => interactive(&args[0]),
+        "/?" => help(cmd),
+        path if args.len() == 0 => interactive(path),
         _ => help(cmd)
     }
 }
