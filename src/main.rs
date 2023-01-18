@@ -1,5 +1,5 @@
 use std::{env, error::Error, fs};
-use crate::syncthing::{IgnoreFile, SubFolder};
+use crate::syncthing::{IgnoreFile, SubFolder, FilesMoved};
 
 mod syncthing;
 
@@ -28,6 +28,8 @@ fn verb(cmd: &str, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> 
     match verb {
         "list" if args.len() == 0 => list("."),
         "list" if args.len() == 1 => list(&args[0]),
+        "clean" if args.len() == 0 => run_clean("."),
+        "clean" if args.len() == 1 => run_clean(&args[0]),
         "include" if args.len() == 0 => set_folder("..", &current_sub_folder()?, true),
         "include" if args.len() == 1 => set_folder(".", &args[0], true),
         "include" if args.len() == 2 => set_folder(&args[0], &args[1], true),
@@ -49,14 +51,25 @@ fn verb(cmd: &str, verb: &str, args: Vec<String>) -> Result<(), Box<dyn Error>> 
 fn list(path: &str) -> Result<(), Box<dyn Error>> {
     let ignore = IgnoreFile::open(path)?;
     warn(&ignore);
-    for folder in &ignore.folders {
-        print_folder(folder);
-    }
+    print_folders(&mut ignore.folders.iter());
     println!("{} of {} sub folders selected to sync", ignore.folders.iter().filter(|f| f.selected).count(), ignore.folders.len());
     if ignore.removed.len() > 0 {
         println!("(and {} of {} sub folders which have since been deleted)", ignore.removed.iter().filter(|f| f.selected).count(), ignore.removed.len());
     }
-    Ok(())
+    list_cleaned(ignore.list_redundant_files()?, true)
+}
+
+fn run_clean(path: &str) -> Result<(), Box<dyn Error>> {
+    let ignore = IgnoreFile::open(path)?;
+    warn(&ignore);
+    let added: Vec<&SubFolder> = ignore.folders.iter().filter(|f| f.assumed).collect();
+    if added.len() > 0 {
+        println!("The following new sub {} been added:", if added.len() == 1 { "folder has" } else { "folders have" });
+        print_folders(&mut added.into_iter());
+    }
+    list_removed(&ignore);
+    ignore.save()?;
+    list_cleaned(ignore.clean_redundant_files()?, false)
 }
 
 fn set_folder(path: &str, sub_folder: &str, value: bool) -> Result<(), Box<dyn Error>> {
@@ -66,7 +79,7 @@ fn set_folder(path: &str, sub_folder: &str, value: bool) -> Result<(), Box<dyn E
     println!("{} '{}' for syncing", selected(value), sub_folder);
     list_removed(&ignore);
     ignore.save()?;
-    clean(&ignore)
+    list_cleaned(ignore.clean_redundant_files()?, false)
 }
 
 fn set_all(path: &str, value: bool) -> Result<(), Box<dyn Error>> {
@@ -78,14 +91,18 @@ fn set_all(path: &str, value: bool) -> Result<(), Box<dyn Error>> {
     println!("{} all {} sub folders for syncing", selected(value), ignore.folders.len());
     list_removed(&ignore);
     ignore.save()?;
-    clean(&ignore)
+    list_cleaned(ignore.clean_redundant_files()?, false)
 }
 
-fn clean(ignore: &IgnoreFile) -> Result<(), Box<dyn Error>> {
-    if let Some(files) = ignore.clean_redundant_files()? {
-        println!("Moved non-synced files to {}", files.to_path.display());
+fn list_cleaned(moved: Option<FilesMoved>, dry_run: bool) -> Result<(), Box<dyn Error>> {
+    if let Some(files) = moved {
+        if dry_run {
+            println!("WARNING: Found non-synced files:");
+        } else {
+            println!("Moved non-synced files to {}", files.to_path.display());
+        }
         for (folder, count) in files.count_by_folder {
-            println!("- {}: {} files", folder.name, count);
+            println!("- {}: {} files totalling {}", folder.name, count.files, count.size());
         }
     }
     Ok(())
@@ -112,26 +129,26 @@ fn warn(ignore: &IgnoreFile) {
     }
 }
 
-fn print_folder(folder: &SubFolder) {
-    let selected = if folder.selected {
-        'x'
-    } else {
-        ' '
-    };
-    let assumed = if folder.assumed {
-        " (assumed)"
-    } else {
-        ""
-    };
-    println!("[{}] {}{}", selected, folder.name, assumed);
+fn print_folders(folders: &mut dyn Iterator<Item = &SubFolder>) {
+    for folder in folders {
+        let selected = if folder.selected {
+            'x'
+        } else {
+            ' '
+        };
+        let assumed = if folder.assumed {
+            " (assumed)"
+        } else {
+            ""
+        };
+        println!("[{}] {}{}", selected, folder.name, assumed);
+    }
 }
 
 fn list_removed(ignore: &IgnoreFile) {
     if ignore.removed.len() > 0 {
-        println!("The following deleted sub folders have removed:");
-        for folder in &ignore.removed {
-            print_folder(folder);
-        }
+        println!("The following deleted sub {} been removed:", if ignore.removed.len() == 1 { "folder has" } else { "folders have" });
+        print_folders(&mut ignore.removed.iter());
     }
 }
 

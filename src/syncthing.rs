@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::fs;
 use std::error::Error;
 use std::path::PathBuf;
@@ -29,8 +29,13 @@ pub enum SyncthingError {
 }
 
 pub struct FilesMoved<'a> {
-    pub count_by_folder: Vec<(&'a SubFolder, usize)>,
+    pub count_by_folder: Vec<(&'a SubFolder, FileCount)>,
     pub to_path: PathBuf
+}
+
+pub struct FileCount {
+    pub files: usize,
+    pub bytes: u64
 }
 
 const STFOLDER: &str = ".stfolder";
@@ -167,13 +172,13 @@ impl IgnoreFile {
         }
         let mut i = 0;
         while i < ignore.folders.len() {
-            if !actual.contains(&ignore.folders[i].name) {
+            if !actual.contains_key(&ignore.folders[i].name) {
                 ignore.removed.push(ignore.folders.remove(i));
             } else {
                 i += 1;
             }
         }
-        for name in actual {
+        for (name, _) in actual {
             if ignore.folders.iter().position(|f| f.name == name).is_none() {
                 let f = SubFolder {
                     name,
@@ -221,38 +226,97 @@ impl IgnoreFile {
     }
 
     pub fn clean_redundant_files(&self) -> Result<Option<FilesMoved>, Box<dyn Error>> {
-        let stversions = self.filename.with_file_name(STVERSIONS);
-        let counts = Vec::new();
-        for folder in self.folders.iter().filter(|f| !f.selected) {
-            let path = self.filename.with_file_name(folder.name);
-            let entries = ls(path, true, true);
-            if entries.len() > 0 {
-                let move_to = stversions.clone();
-                move_to.push(folder.name);
-                for entry in entries {
-                    //TODO fs rename from to, but make sure to does not exist, if it does then rename to to .0/.1 etc until doesn't exist
+        self.clean(false)
+    }
+
+    pub fn list_redundant_files(&self) -> Result<Option<FilesMoved>, Box<dyn Error>> {
+        self.clean(true)
+    }
+
+    fn clean(&self, dry_run: bool) -> Result<Option<FilesMoved>, Box<dyn Error>> {
+        if let Some(filename) = &self.filename {
+            let stversions = filename.with_file_name(STVERSIONS);
+            let mut counts = Vec::new();
+            for folder in self.folders.iter().filter(|f| !f.selected) {
+                let path = filename.with_file_name(&folder.name);
+                let entries = ls(&path, true, true)?;
+                if entries.len() > 0 {
+                    let mut move_to = stversions.clone();
+                    move_to.push(&folder.name);
+                    let mut i = 0;
+                    while move_to.exists() {
+                        move_to.set_file_name(format!("{}.{}", folder.name, i));
+                        i += 1;
+                    }
+                    fs::create_dir(&move_to)?;
+                    let mut count = FileCount::new();
+                    for (name, entry) in entries {
+                        count.add(&entry)?;
+                        if !dry_run {
+                            let mut this_to = move_to.clone();
+                            this_to.push(name);
+                            fs::rename(entry.path(), this_to)?;
+                        }
+                    }
+                    counts.push((folder, count));
                 }
             }
-        }
-        Ok(if counts.len() > 0 {
-            Some(FilesMoved {
-                count_by_folder: counts,
-                to_path: stversions
+            Ok(if counts.len() > 0 {
+                Some(FilesMoved {
+                    count_by_folder: counts,
+                    to_path: stversions
+                })
+            } else {
+                None
             })
         } else {
-            None
-        })
+            Err(Box::new(SyncthingError::FilenameRequired))
+        }
     }
 }
 
-fn ls(path: &PathBuf, include_dir: bool, include_files: bool) -> Result<HashSet<String>, Box<dyn Error>> {
-    let mut results = HashSet::new();
+impl FileCount {
+    fn new() -> Self {
+        Self {
+            files: 0,
+            bytes: 0
+        }
+    }
+
+    fn add(&mut self, file_or_folder: &fs::DirEntry) -> Result<(), Box<dyn Error>> {
+        let metadata = file_or_folder.metadata()?;
+        if metadata.is_dir() {
+            for sub in fs::read_dir(file_or_folder.path())? {
+                self.add(&sub?)?;
+            }
+        } else {
+            self.files += 1;
+            self.bytes += metadata.len();
+        }
+        Ok(())
+    }
+
+    pub fn size(&self) -> String {
+        const SI_PREFIX: [char; 5] = ['\0', 'k', 'm', 'g', 't'];
+        let mut i = 0;
+        let mut n = self.bytes as f64;
+        while n > 1024.0 && i < SI_PREFIX.len() {
+            i += 1;
+            n /= 1024.0;
+        }
+        format!("{:.1} {}b", n, SI_PREFIX[i])
+    }
+}
+
+fn ls(path: &PathBuf, include_dir: bool, include_files: bool) -> Result<HashMap<String, fs::DirEntry>, Box<dyn Error>> {
+    let mut results = HashMap::new();
     for entry in fs::read_dir(path)? {
-        let existing = entry?.path();
-        if include_dir && existing.is_dir() || include_files && existing.is_file() {
-            if let Some(file_name) = existing.file_name() {
+        let existing = entry?;
+        let metadata = existing.metadata()?;
+        if include_dir && metadata.is_dir() || include_files && metadata.is_file() {
+            if let Some(file_name) = existing.path().file_name() {
                 if let Some(s) = file_name.to_str() {
-                    results.insert(s.to_string());
+                    results.insert(s.to_string(), existing);
                 }
             }
         }
