@@ -14,8 +14,8 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 fn help(cmd: &str) -> Result<(), Box<dyn Error>> {
     println!("Usage:");
-    println!("  {} [PATH] -- open an interactive editor for which folders to sync", cmd);
-    println!("  {} list [PATH] -- list the folders currently selected to sync", cmd);
+    println!("  {} [PATH] -- open an interactive editor for which sub folders to sync", cmd);
+    println!("  {} list [PATH] -- list the sub folders currently selected to sync", cmd);
     println!("  {} include [PATH] [SUB_FOLDER] -- enable syncing of SUB_FOLDER", cmd);
     println!("  {} exclude [PATH] [SUB_FOLDER] -- disable syncing of SUB_FOLDER", cmd);
     println!("  {} all [PATH] -- enable syncing of all sub folders", cmd);
@@ -64,7 +64,7 @@ fn run_clean(path: &str) -> Result<(), Box<dyn Error>> {
     warn(&ignore);
     let added: Vec<&SubFolder> = ignore.folders.iter().filter(|f| f.assumed).collect();
     if added.len() > 0 {
-        println!("The following new sub {} been added:", if added.len() == 1 { "folder has" } else { "folders have" });
+        println!("The following new {} been added:", if added.len() == 1 { "sub folder has" } else { "sub folders have" });
         print_folders(&mut added.into_iter());
     }
     list_removed(&ignore);
@@ -147,7 +147,7 @@ fn print_folders(folders: &mut dyn Iterator<Item = &SubFolder>) {
 
 fn list_removed(ignore: &IgnoreFile) {
     if ignore.removed.len() > 0 {
-        println!("The following deleted sub {} been removed:", if ignore.removed.len() == 1 { "folder has" } else { "folders have" });
+        println!("The following deleted {} been removed:", if ignore.removed.len() == 1 { "sub folder has" } else { "sub folders have" });
         print_folders(&mut ignore.removed.iter());
     }
 }

@@ -92,7 +92,7 @@ impl FromStr for SubFolder {
                 assumed: false
             })
         } else {
-            Err(format!("Invalid line: {}", s))
+            Err(format!("Invalid sub folder: {}", s))
         }
     }
 }
