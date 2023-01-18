@@ -248,7 +248,9 @@ impl IgnoreFile {
                         move_to.set_file_name(format!("{}.{}", folder.name, i));
                         i += 1;
                     }
-                    fs::create_dir(&move_to)?;
+                    if !dry_run {
+                        fs::create_dir(&move_to)?;
+                    }
                     let mut count = FileCount::new();
                     for (name, entry) in entries {
                         count.add(&entry)?;
